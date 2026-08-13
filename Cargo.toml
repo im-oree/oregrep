@@ -1,0 +1,62 @@
+[package]
+name = "oregrep"
+version = "0.1.0"
+edition = "2021"
+authors = ["ORE"]
+description = "Powerful all-in-one file, code, and codebase manipulation CLI"
+
+[[bin]]
+name = "ore"
+path = "src/main.rs"
+
+[dependencies]
+# CLI parsing
+clap = { version = "4.5", features = ["derive", "cargo"] }
+
+# Regex + text search
+regex = "1.11"
+aho-corasick = "1.1"
+
+# File walking + gitignore-aware
+walkdir = "2.5"
+ignore = "0.4"
+glob = "0.3"
+
+# Encoding detection + conversion
+encoding_rs = "0.8"
+encoding_rs_io = "0.1"
+chardetng = "0.1"
+
+# Diff engine
+similar = { version = "2.6", features = ["inline"] }
+
+# Terminal output + color
+colored = "2.1"
+crossterm = "0.28"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# File system helpers
+tempfile = "3.14"
+
+# Hashing
+sha2 = "0.10"
+md-5 = "0.10"
+crc32fast = "1.4"
+
+# Utilities
+chrono = "0.4"
+byte-unit = "5.1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
