@@ -1,0 +1,2 @@
+import { useSignal } from 'react';
+export const Card = () => { const [y, setY] = useSignal(null); return <div/>; };

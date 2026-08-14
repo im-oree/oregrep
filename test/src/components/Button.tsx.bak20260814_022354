@@ -1,0 +1,2 @@
+import { useSignal } from 'react';
+export const Button = () => { const [x, setX] = useSignal(0); return <div>{x}</div>; };

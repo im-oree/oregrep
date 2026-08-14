@@ -1,0 +1,2 @@
+import { useState } from 'react';
+export function useThing() { const [z] = useState(0); return z; }

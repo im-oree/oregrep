@@ -18,20 +18,34 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Search for a pattern in files (recursive, gitignore-aware)
     Find(commands::find::FindArgs),
-    /// Print a file with smart encoding detection
     Cat(commands::cat::CatArgs),
-    /// Print a specific line or line range from a file
     Line(commands::line::LineArgs),
-    /// Print a directory tree
     Tree(commands::tree::TreeArgs),
-    /// Create a backup of a file (max 3 per file, oldest deleted)
     Backup(commands::backup::BackupArgs),
-    /// Restore a file from backup
     Restore(commands::restore::RestoreArgs),
-    /// Apply a find/replace patch to a file (atomic, encoding-safe)
     Patch(commands::patch::PatchArgs),
+    Replace(commands::replace::ReplaceArgs),
+    Diff(commands::diff::DiffArgs),
+    Encoding(commands::encoding::EncodingArgs),
+    Newlines(commands::newlines::NewlinesArgs),
+    Insert(commands::insert::InsertArgs),
+    DeleteLines(commands::delete_lines::DeleteLinesArgs),
+    ReplaceLine(commands::replace_line::ReplaceLineArgs),
+    ReplaceRange(commands::replace_range::ReplaceRangeArgs),
+    Before(commands::before::BeforeArgs),
+    After(commands::after::AfterArgs),
+    Surround(commands::surround::SurroundArgs),
+    /// Regex-based find/replace across entire project (recursive, gitignore-aware)
+    ReplaceProject(commands::replace_project::ReplaceProjectArgs),
+    /// Regex-based find/replace across files of specified extensions
+    ReplaceExt(commands::replace_ext::ReplaceExtArgs),
+    /// Regex-based find/replace within a specific directory
+    ReplaceDir(commands::replace_dir::ReplaceDirArgs),
+    /// Literal find/replace patch across entire project
+    PatchProject(commands::patch_project::PatchProjectArgs),
+    /// Bulk rename files matching a regex
+    RenameBulk(commands::rename_bulk::RenameBulkArgs),
 }
 
 fn main() -> Result<()> {
@@ -43,13 +57,29 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Find(args) => commands::find::run(args)?,
-        Commands::Cat(args) => commands::cat::run(args)?,
-        Commands::Line(args) => commands::line::run(args)?,
-        Commands::Tree(args) => commands::tree::run(args)?,
-        Commands::Backup(args) => commands::backup::run(args)?,
-        Commands::Restore(args) => commands::restore::run(args)?,
-        Commands::Patch(args) => commands::patch::run(args)?,
+        Commands::Find(a) => commands::find::run(a)?,
+        Commands::Cat(a) => commands::cat::run(a)?,
+        Commands::Line(a) => commands::line::run(a)?,
+        Commands::Tree(a) => commands::tree::run(a)?,
+        Commands::Backup(a) => commands::backup::run(a)?,
+        Commands::Restore(a) => commands::restore::run(a)?,
+        Commands::Patch(a) => commands::patch::run(a)?,
+        Commands::Replace(a) => commands::replace::run(a)?,
+        Commands::Diff(a) => commands::diff::run(a)?,
+        Commands::Encoding(a) => commands::encoding::run(a)?,
+        Commands::Newlines(a) => commands::newlines::run(a)?,
+        Commands::Insert(a) => commands::insert::run(a)?,
+        Commands::DeleteLines(a) => commands::delete_lines::run(a)?,
+        Commands::ReplaceLine(a) => commands::replace_line::run(a)?,
+        Commands::ReplaceRange(a) => commands::replace_range::run(a)?,
+        Commands::Before(a) => commands::before::run(a)?,
+        Commands::After(a) => commands::after::run(a)?,
+        Commands::Surround(a) => commands::surround::run(a)?,
+        Commands::ReplaceProject(a) => commands::replace_project::run(a)?,
+        Commands::ReplaceExt(a) => commands::replace_ext::run(a)?,
+        Commands::ReplaceDir(a) => commands::replace_dir::run(a)?,
+        Commands::PatchProject(a) => commands::patch_project::run(a)?,
+        Commands::RenameBulk(a) => commands::rename_bulk::run(a)?,
     }
 
     Ok(())

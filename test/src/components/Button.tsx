@@ -1,0 +1,2 @@
+import { useAtom } from 'react';
+export const Button = () => { const [x, setX] = useAtom(0); return <span>{x}</span>; };
