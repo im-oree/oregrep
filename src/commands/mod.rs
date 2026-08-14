@@ -41,3 +41,7 @@ pub mod mkfile;
 pub mod checksum;
 pub mod find_dupes;
 pub mod verify_checksum;
+pub mod extract;
+pub mod pack;
+pub mod slice;
+pub mod map;

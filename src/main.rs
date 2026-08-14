@@ -70,6 +70,14 @@ enum Commands {
     FindDupes(commands::find_dupes::FindDupesArgs),
     /// Verify a file against an expected checksum
     VerifyChecksum(commands::verify_checksum::VerifyChecksumArgs),
+    /// Extract line ranges from one or more files (multi-file, multi-range, labels)
+    Extract(commands::extract::ExtractArgs),
+    /// Pack files into an AI-ready blob (md/xml/tag/plain, with tree, strip, truncate)
+    Pack(commands::pack::PackArgs),
+    /// Slice content between pattern markers (start/end regex)
+    Slice(commands::slice::SliceArgs),
+    /// Codebase map: per-file lines/size/exports/imports overview
+    Map(commands::map::MapArgs),
 }
 
 fn main() -> Result<()> {
@@ -122,6 +130,10 @@ fn main() -> Result<()> {
         Commands::Checksum(a) => commands::checksum::run(a)?,
         Commands::FindDupes(a) => commands::find_dupes::run(a)?,
         Commands::VerifyChecksum(a) => commands::verify_checksum::run(a)?,
+        Commands::Extract(a) => commands::extract::run(a)?,
+        Commands::Pack(a) => commands::pack::run(a)?,
+        Commands::Slice(a) => commands::slice::run(a)?,
+        Commands::Map(a) => commands::map::run(a)?,
     }
     Ok(())
 }
