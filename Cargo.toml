@@ -55,6 +55,10 @@ crc32fast = "1.4"
 chrono = "0.4"
 byte-unit = "5.1"
 
+# Process orchestration
+which = "6.0"
+notify = "6.1"
+
 [profile.release]
 opt-level = 3
 lto = true

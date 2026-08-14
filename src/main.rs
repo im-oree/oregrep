@@ -98,6 +98,22 @@ enum Commands {
     GitCommit(commands::git_commit::GitCommitArgs),
     /// Git log with filters (--mine, --author, --grep, --since, --until)
     GitLog(commands::git_log::GitLogArgs),
+    /// Run a command with capture/stream/silent options
+    Run(commands::run::RunArgs),
+    /// Wait for a condition (file, port, url, command output, time)
+    Wait(commands::wait::WaitArgs),
+    /// Retry a command until success (with backoff)
+    Retry(commands::retry::RetryArgs),
+    /// Run multiple commands in parallel
+    Parallel(commands::parallel::ParallelArgs),
+    /// Run commands sequentially (stop or continue on fail)
+    Sequence(commands::sequence::SequenceArgs),
+    /// Watch a path and run a command when it changes
+    Watch(commands::watch::WatchArgs),
+    /// Run a fallback command if the first fails
+    OnError(commands::on_error::OnErrorArgs),
+    /// Run a follow-up command if the first succeeds
+    OnSuccess(commands::on_success::OnSuccessArgs),
 }
 
 fn main() -> Result<()> {
@@ -164,6 +180,14 @@ fn main() -> Result<()> {
         Commands::GitStage(a) => commands::git_stage::run(a)?,
         Commands::GitCommit(a) => commands::git_commit::run(a)?,
         Commands::GitLog(a) => commands::git_log::run(a)?,
+        Commands::Run(a) => commands::run::run(a)?,
+        Commands::Wait(a) => commands::wait::run(a)?,
+        Commands::Retry(a) => commands::retry::run(a)?,
+        Commands::Parallel(a) => commands::parallel::run(a)?,
+        Commands::Sequence(a) => commands::sequence::run(a)?,
+        Commands::Watch(a) => commands::watch::run(a)?,
+        Commands::OnError(a) => commands::on_error::run(a)?,
+        Commands::OnSuccess(a) => commands::on_success::run(a)?,
     }
     Ok(())
 }
