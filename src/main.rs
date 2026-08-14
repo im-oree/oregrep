@@ -36,23 +36,38 @@ enum Commands {
     Before(commands::before::BeforeArgs),
     After(commands::after::AfterArgs),
     Surround(commands::surround::SurroundArgs),
-    /// Regex-based find/replace across entire project (recursive, gitignore-aware)
     ReplaceProject(commands::replace_project::ReplaceProjectArgs),
-    /// Regex-based find/replace across files of specified extensions
     ReplaceExt(commands::replace_ext::ReplaceExtArgs),
-    /// Regex-based find/replace within a specific directory
     ReplaceDir(commands::replace_dir::ReplaceDirArgs),
-    /// Literal find/replace patch across entire project
     PatchProject(commands::patch_project::PatchProjectArgs),
-    /// Bulk rename files matching a regex
     RenameBulk(commands::rename_bulk::RenameBulkArgs),
+    /// Print first N lines of a file
+    Head(commands::head::HeadArgs),
+    /// Print last N lines of a file
+    Tail(commands::tail::TailArgs),
+    /// Count matches of a pattern (per file or total)
+    Count(commands::count::CountArgs),
+    /// Codebase statistics (files, sizes, lines, by extension)
+    Stats(commands::stats::StatsArgs),
+    /// Word / line / char / byte counts
+    Wc(commands::wc::WcArgs),
+    /// Remove duplicate lines (adjacent or global)
+    DedupLines(commands::dedup_lines::DedupLinesArgs),
+    /// Sort lines
+    SortLines(commands::sort_lines::SortLinesArgs),
+    /// Trim leading/trailing whitespace per line
+    Trim(commands::trim::TrimArgs),
+    /// Remove all blank lines
+    StripBlankLines(commands::strip_blank_lines::StripBlankLinesArgs),
+    /// Collapse multiple blank lines into one
+    CollapseBlankLines(commands::collapse_blank_lines::CollapseBlankLinesArgs),
+    /// Purge .bak* files across a path (with filters and confirmation)
+    PurgeBackups(commands::purge_backups::PurgeBackupsArgs),
 }
 
 fn main() -> Result<()> {
     #[cfg(windows)]
-    {
-        let _ = enable_ansi_support();
-    }
+    { let _ = enable_ansi_support(); }
 
     let cli = Cli::parse();
 
@@ -80,8 +95,18 @@ fn main() -> Result<()> {
         Commands::ReplaceDir(a) => commands::replace_dir::run(a)?,
         Commands::PatchProject(a) => commands::patch_project::run(a)?,
         Commands::RenameBulk(a) => commands::rename_bulk::run(a)?,
+        Commands::Head(a) => commands::head::run(a)?,
+        Commands::Tail(a) => commands::tail::run(a)?,
+        Commands::Count(a) => commands::count::run(a)?,
+        Commands::Stats(a) => commands::stats::run(a)?,
+        Commands::Wc(a) => commands::wc::run(a)?,
+        Commands::DedupLines(a) => commands::dedup_lines::run(a)?,
+        Commands::SortLines(a) => commands::sort_lines::run(a)?,
+        Commands::Trim(a) => commands::trim::run(a)?,
+        Commands::StripBlankLines(a) => commands::strip_blank_lines::run(a)?,
+        Commands::CollapseBlankLines(a) => commands::collapse_blank_lines::run(a)?,
+        Commands::PurgeBackups(a) => commands::purge_backups::run(a)?,
     }
-
     Ok(())
 }
 
