@@ -128,6 +128,20 @@ enum Commands {
     SearchChanged(commands::search_changed::SearchChangedArgs),
     /// Search across git history (pickaxe / regex)
     SearchHistory(commands::search_history::SearchHistoryArgs),
+    /// Word/character-level diff
+    DiffWord(commands::diff_word::DiffWordArgs),
+    /// Semantic diff (ignores whitespace + comments)
+    DiffSemantic(commands::diff_semantic::DiffSemanticArgs),
+    /// Diff with configurable ignore flags (whitespace, blank, case, comments)
+    DiffIgnore(commands::diff_ignore::DiffIgnoreArgs),
+    /// Diff two directory trees
+    DiffDirs(commands::diff_dirs::DiffDirsArgs),
+    /// Three-way merge (base + ours + theirs)
+    Merge3(commands::merge3::Merge3Args),
+    /// Apply a .patch/.diff file (via git apply, with backups)
+    ApplyPatch(commands::apply_patch::ApplyPatchArgs),
+    /// Revert (reverse-apply) a .patch/.diff file
+    RevertPatch(commands::revert_patch::RevertPatchArgs),
 }
 
 fn main() -> Result<()> {
@@ -209,6 +223,13 @@ fn main() -> Result<()> {
         Commands::SearchFuzzy(a) => commands::search_fuzzy::run(a)?,
         Commands::SearchChanged(a) => commands::search_changed::run(a)?,
         Commands::SearchHistory(a) => commands::search_history::run(a)?,
+        Commands::DiffWord(a) => commands::diff_word::run(a)?,
+        Commands::DiffSemantic(a) => commands::diff_semantic::run(a)?,
+        Commands::DiffIgnore(a) => commands::diff_ignore::run(a)?,
+        Commands::DiffDirs(a) => commands::diff_dirs::run(a)?,
+        Commands::Merge3(a) => commands::merge3::run(a)?,
+        Commands::ApplyPatch(a) => commands::apply_patch::run(a)?,
+        Commands::RevertPatch(a) => commands::revert_patch::run(a)?,
     }
     Ok(())
 }
