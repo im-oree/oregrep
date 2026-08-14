@@ -176,9 +176,21 @@ enum Commands {
     Ws(commands::ws::WsArgs),
     /// Crawl a URL by following links (bounded depth + count)
     Crawl(commands::crawl::CrawlArgs),
+    /// Show content (stdin or file) in an editor (default: notepad). Strips ANSI colors.
+    Show(commands::show::ShowArgs),
+    /// Copy content (stdin or file) to system clipboard
+    Copy(commands::copy::CopyArgs),
+    /// Write stdin to a temp file and print its path (chain with ore open)
+    ToTemp(commands::to_temp::ToTempArgs),
+    /// Open a file or folder in default OS handler or a specified editor
+    OpenFile(commands::open_file::OpenFileArgs),
 }
 
 fn main() -> Result<()> {
+    // Exit quietly when downstream closes the pipe early (e.g. `ore find ... | head`),
+    // instead of panicking with "failed printing to stdout: The pipe is being closed".
+    install_broken_pipe_hook();
+
     #[cfg(windows)]
     { let _ = enable_ansi_support(); }
 
@@ -281,8 +293,28 @@ fn main() -> Result<()> {
         Commands::BenchUrl(a) => commands::bench_url::run(a)?,
         Commands::Ws(a) => commands::ws::run(a)?,
         Commands::Crawl(a) => commands::crawl::run(a)?,
+        Commands::Show(a) => commands::show::run(a)?,
+        Commands::Copy(a) => commands::copy::run(a)?,
+        Commands::ToTemp(a) => commands::to_temp::run(a)?,
+        Commands::OpenFile(a) => commands::open_file::run(a)?,
     }
     Ok(())
+}
+
+fn install_broken_pipe_hook() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let msg = info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_default();
+        if msg.contains("failed printing to stdout") || msg.contains("Broken pipe") || msg.contains("pipe is being closed") {
+            std::process::exit(0);
+        }
+        default_hook(info);
+    }));
 }
 
 #[cfg(windows)]

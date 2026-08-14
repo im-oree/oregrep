@@ -94,3 +94,7 @@ pub mod resume_download;
 pub mod bench_url;
 pub mod ws;
 pub mod crawl;
+pub mod show;
+pub mod copy;
+pub mod to_temp;
+pub mod open_file;
