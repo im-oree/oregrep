@@ -142,17 +142,17 @@ enum Commands {
     ApplyPatch(commands::apply_patch::ApplyPatchArgs),
     /// Revert (reverse-apply) a .patch/.diff file
     RevertPatch(commands::revert_patch::RevertPatchArgs),
-    /// HTTP GET a URL
+    /// HTTP GET a URL (with headers, output, pretty JSON)
     Fetch(commands::fetch::FetchArgs),
-    /// HTTP POST/PUT/PATCH/DELETE with body/form/json
+    /// HTTP POST/PUT/PATCH/DELETE with body from string/file/json
     Post(commands::post::PostArgs),
-    /// Download URL to file with progress bar
+    /// Download a URL to a file
     Download(commands::download::DownloadArgs),
-    /// Show response headers
+    /// Show response headers only
     Headers(commands::headers::HeadersArgs),
-    /// Show HTTP status only
+    /// Show HTTP status code only
     Status(commands::status::StatusArgs),
-    /// TCP ping (host:port reachability)
+    /// TCP ping (host:port reachability test)
     Ping(commands::ping::PingArgs),
     /// DNS resolution
     Dns(commands::dns::DnsArgs),
@@ -184,6 +184,38 @@ enum Commands {
     ToTemp(commands::to_temp::ToTempArgs),
     /// Open a file or folder in default OS handler or a specified editor
     OpenFile(commands::open_file::OpenFileArgs),
+    /// View file as hex+ASCII (paged, with offset/length/width)
+    HexView(commands::hex_view::HexViewArgs),
+    /// Find hex pattern in binary (with ?? wildcards)
+    HexFind(commands::hex_find::HexFindArgs),
+    /// Replace hex bytes (same-length in-place)
+    HexReplace(commands::hex_replace::HexReplaceArgs),
+    /// Write hex bytes at a specific offset (same-length or extend)
+    HexPatch(commands::hex_patch::HexPatchArgs),
+    /// Binary diff with offset + hex dump
+    HexDiff(commands::hex_diff::HexDiffArgs),
+    /// Extract a byte range from a file
+    HexExtract(commands::hex_extract::HexExtractArgs),
+    /// Insert bytes at offset (existing bytes shift)
+    HexInsert(commands::hex_insert::HexInsertArgs),
+    /// Delete a byte range from a file
+    HexDelete(commands::hex_delete::HexDeleteArgs),
+    /// Extract printable strings (ASCII + optional UTF-16)
+    Strings(commands::strings::StringsArgs),
+    /// Identify file type by magic bytes
+    Magic(commands::magic::MagicArgs),
+    /// Byte frequency + entropy + histogram
+    BinStats(commands::bin_stats::BinStatsArgs),
+    /// Base64 encode
+    Base64Encode(commands::base64_encode::Base64EncodeArgs),
+    /// Base64 decode
+    Base64Decode(commands::base64_decode::Base64DecodeArgs),
+    /// Raw xxd-style hex dump
+    Xxd(commands::xxd::XxdArgs),
+    /// Extract byte range to a new file
+    BinSlice(commands::bin_slice::BinSliceArgs),
+    /// Concatenate binary files
+    BinCat(commands::bin_cat::BinCatArgs),
 }
 
 fn main() -> Result<()> {
@@ -297,6 +329,22 @@ fn main() -> Result<()> {
         Commands::Copy(a) => commands::copy::run(a)?,
         Commands::ToTemp(a) => commands::to_temp::run(a)?,
         Commands::OpenFile(a) => commands::open_file::run(a)?,
+        Commands::HexView(a) => commands::hex_view::run(a)?,
+        Commands::HexFind(a) => commands::hex_find::run(a)?,
+        Commands::HexReplace(a) => commands::hex_replace::run(a)?,
+        Commands::HexPatch(a) => commands::hex_patch::run(a)?,
+        Commands::HexDiff(a) => commands::hex_diff::run(a)?,
+        Commands::HexExtract(a) => commands::hex_extract::run(a)?,
+        Commands::HexInsert(a) => commands::hex_insert::run(a)?,
+        Commands::HexDelete(a) => commands::hex_delete::run(a)?,
+        Commands::Strings(a) => commands::strings::run(a)?,
+        Commands::Magic(a) => commands::magic::run(a)?,
+        Commands::BinStats(a) => commands::bin_stats::run(a)?,
+        Commands::Base64Encode(a) => commands::base64_encode::run(a)?,
+        Commands::Base64Decode(a) => commands::base64_decode::run(a)?,
+        Commands::Xxd(a) => commands::xxd::run(a)?,
+        Commands::BinSlice(a) => commands::bin_slice::run(a)?,
+        Commands::BinCat(a) => commands::bin_cat::run(a)?,
     }
     Ok(())
 }

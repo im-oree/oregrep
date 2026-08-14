@@ -90,6 +90,9 @@ url = "2.5"
 # HTML parsing (for `crawl` to extract links)
 scraper = "0.20"
 
+# Binary / hex
+base64 = "0.22"
+
 [profile.release]
 opt-level = 3
 lto = true
