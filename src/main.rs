@@ -114,6 +114,20 @@ enum Commands {
     OnError(commands::on_error::OnErrorArgs),
     /// Run a follow-up command if the first succeeds
     OnSuccess(commands::on_success::OnSuccessArgs),
+    /// Find files containing ALL given patterns
+    SearchAnd(commands::search_and::SearchAndArgs),
+    /// Find files containing ANY given patterns
+    SearchOr(commands::search_or::SearchOrArgs),
+    /// Find files that do NOT contain a pattern (optionally require another)
+    SearchNegative(commands::search_negative::SearchNegativeArgs),
+    /// Search patterns that span multiple lines
+    SearchMultiline(commands::search_multiline::SearchMultilineArgs),
+    /// Typo-tolerant fuzzy search (filenames + content)
+    SearchFuzzy(commands::search_fuzzy::SearchFuzzyArgs),
+    /// Search only in git-changed files (staged/unstaged/untracked filters)
+    SearchChanged(commands::search_changed::SearchChangedArgs),
+    /// Search across git history (pickaxe / regex)
+    SearchHistory(commands::search_history::SearchHistoryArgs),
 }
 
 fn main() -> Result<()> {
@@ -188,6 +202,13 @@ fn main() -> Result<()> {
         Commands::Watch(a) => commands::watch::run(a)?,
         Commands::OnError(a) => commands::on_error::run(a)?,
         Commands::OnSuccess(a) => commands::on_success::run(a)?,
+        Commands::SearchAnd(a) => commands::search_and::run(a)?,
+        Commands::SearchOr(a) => commands::search_or::run(a)?,
+        Commands::SearchNegative(a) => commands::search_negative::run(a)?,
+        Commands::SearchMultiline(a) => commands::search_multiline::run(a)?,
+        Commands::SearchFuzzy(a) => commands::search_fuzzy::run(a)?,
+        Commands::SearchChanged(a) => commands::search_changed::run(a)?,
+        Commands::SearchHistory(a) => commands::search_history::run(a)?,
     }
     Ok(())
 }

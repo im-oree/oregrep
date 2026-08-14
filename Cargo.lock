@@ -861,6 +861,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "similar",
+ "strsim",
  "tempfile",
  "thiserror",
  "toml",
