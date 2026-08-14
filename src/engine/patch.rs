@@ -68,15 +68,10 @@ pub fn write_atomic(file: &Path, content: &str, add_bom: bool) -> Result<()> {
 /// Mode determines which occurrences to replace.
 #[derive(Debug, Clone, Copy)]
 pub enum PatchMode {
-    /// Replace exactly one occurrence (fail if 0 or >1)
     Once,
-    /// Replace all occurrences
     All,
-    /// Replace only the Nth occurrence (1-indexed)
     Nth(usize),
-    /// Replace only the first
     First,
-    /// Replace only the last
     Last,
 }
 
@@ -85,7 +80,6 @@ pub fn apply_patch(content: &str, find: &str, replace: &str, mode: PatchMode) ->
         anyhow::bail!("Find pattern cannot be empty");
     }
 
-    // Count occurrences
     let matches: Vec<usize> = content
         .match_indices(find)
         .map(|(idx, _)| idx)
@@ -172,10 +166,18 @@ pub struct PatchOp {
 ///   replace:
 ///   <lines>
 ///   ===
+///
+/// Handles BOM, CRLF line endings, and UTF-16 encoded input.
 pub fn parse_patch_file(content: &str) -> Result<Vec<PatchOp>> {
+    // Strip UTF-8 BOM if present as a character
+    let content = content.trim_start_matches('\u{FEFF}');
+
+    // Normalize line endings: CRLF -> LF
+    let normalized = content.replace("\r\n", "\n");
+
     let mut ops = Vec::new();
-    // Split by === on its own line
-    let blocks: Vec<&str> = content.split("\n===\n").collect();
+    // Split on lines that are exactly "==="
+    let blocks: Vec<&str> = normalized.split("\n===\n").collect();
 
     for (i, block) in blocks.iter().enumerate() {
         let trimmed = block.trim();
@@ -191,17 +193,20 @@ pub fn parse_patch_file(content: &str) -> Result<Vec<PatchOp>> {
 }
 
 fn parse_single_op(block: &str) -> Result<PatchOp> {
-    // Expect: file: ...\n---\nfind:\n<...>\n---\nreplace:\n<...>
+    // Split on lines that are exactly "---"
     let parts: Vec<&str> = block.split("\n---\n").collect();
     if parts.len() != 3 {
-        anyhow::bail!("Patch block must have exactly 3 sections separated by ---");
+        anyhow::bail!(
+            "Patch block must have exactly 3 sections separated by --- (found {} sections)",
+            parts.len()
+        );
     }
 
     // Section 1: file: <path>
     let file_line = parts[0].trim();
     let file = file_line
         .strip_prefix("file:")
-        .ok_or_else(|| anyhow::anyhow!("First section must start with 'file:'"))?
+        .ok_or_else(|| anyhow::anyhow!("First section must start with 'file:', got: {:?}", file_line))?
         .trim()
         .to_string();
 

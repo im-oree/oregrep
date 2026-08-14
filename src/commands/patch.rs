@@ -73,7 +73,7 @@ pub fn run(args: PatchArgs) -> Result<()> {
 
     // Route: patch-file, stdin, or single
     if let Some(ref patch_file) = args.patch_file {
-        let content = std::fs::read_to_string(&patch_file)
+        let content = crate::engine::encoding::read_file_smart(&patch_file)
             .with_context(|| format!("Failed to read patch file: {}", patch_file.display()))?;
         return apply_batch(&content, &args, mode);
     }
