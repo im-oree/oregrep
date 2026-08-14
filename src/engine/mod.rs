@@ -5,3 +5,4 @@ pub mod patch;
 pub mod edit;
 pub mod walker;
 pub mod confirm;
+pub mod git;

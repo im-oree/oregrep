@@ -78,6 +78,26 @@ enum Commands {
     Slice(commands::slice::SliceArgs),
     /// Codebase map: per-file lines/size/exports/imports overview
     Map(commands::map::MapArgs),
+    /// Git working tree status
+    GitStatus(commands::git_status::GitStatusArgs),
+    /// List changed files (with filters)
+    GitChanged(commands::git_changed::GitChangedArgs),
+    /// Show git diff (staged/unstaged, per-file, or commit)
+    GitDiff(commands::git_diff::GitDiffArgs),
+    /// Commit history for a file
+    GitHistory(commands::git_history::GitHistoryArgs),
+    /// Git blame with range support
+    GitBlame(commands::git_blame::GitBlameArgs),
+    /// Search git history by content or commit message
+    GitSearch(commands::git_search::GitSearchArgs),
+    /// Contributors to a file (ranked by commits)
+    GitWho(commands::git_who::GitWhoArgs),
+    /// Stage files with filters (--only/--except/--starts/--changed-in)
+    GitStage(commands::git_stage::GitStageArgs),
+    /// Commit files with filters (--only/--except/--starts/--changed-in)
+    GitCommit(commands::git_commit::GitCommitArgs),
+    /// Git log with filters (--mine, --author, --grep, --since, --until)
+    GitLog(commands::git_log::GitLogArgs),
 }
 
 fn main() -> Result<()> {
@@ -134,6 +154,16 @@ fn main() -> Result<()> {
         Commands::Pack(a) => commands::pack::run(a)?,
         Commands::Slice(a) => commands::slice::run(a)?,
         Commands::Map(a) => commands::map::run(a)?,
+        Commands::GitStatus(a) => commands::git_status::run(a)?,
+        Commands::GitChanged(a) => commands::git_changed::run(a)?,
+        Commands::GitDiff(a) => commands::git_diff::run(a)?,
+        Commands::GitHistory(a) => commands::git_history::run(a)?,
+        Commands::GitBlame(a) => commands::git_blame::run(a)?,
+        Commands::GitSearch(a) => commands::git_search::run(a)?,
+        Commands::GitWho(a) => commands::git_who::run(a)?,
+        Commands::GitStage(a) => commands::git_stage::run(a)?,
+        Commands::GitCommit(a) => commands::git_commit::run(a)?,
+        Commands::GitLog(a) => commands::git_log::run(a)?,
     }
     Ok(())
 }
