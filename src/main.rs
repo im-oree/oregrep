@@ -41,28 +41,35 @@ enum Commands {
     ReplaceDir(commands::replace_dir::ReplaceDirArgs),
     PatchProject(commands::patch_project::PatchProjectArgs),
     RenameBulk(commands::rename_bulk::RenameBulkArgs),
-    /// Print first N lines of a file
     Head(commands::head::HeadArgs),
-    /// Print last N lines of a file
     Tail(commands::tail::TailArgs),
-    /// Count matches of a pattern (per file or total)
     Count(commands::count::CountArgs),
-    /// Codebase statistics (files, sizes, lines, by extension)
     Stats(commands::stats::StatsArgs),
-    /// Word / line / char / byte counts
     Wc(commands::wc::WcArgs),
-    /// Remove duplicate lines (adjacent or global)
     DedupLines(commands::dedup_lines::DedupLinesArgs),
-    /// Sort lines
     SortLines(commands::sort_lines::SortLinesArgs),
-    /// Trim leading/trailing whitespace per line
     Trim(commands::trim::TrimArgs),
-    /// Remove all blank lines
     StripBlankLines(commands::strip_blank_lines::StripBlankLinesArgs),
-    /// Collapse multiple blank lines into one
     CollapseBlankLines(commands::collapse_blank_lines::CollapseBlankLinesArgs),
-    /// Purge .bak* files across a path (with filters and confirmation)
     PurgeBackups(commands::purge_backups::PurgeBackupsArgs),
+    /// Move/rename a file or directory (auto-backup on overwrite)
+    Mv(commands::mv::MvArgs),
+    /// Copy a file or directory (auto-backup on overwrite)
+    Cp(commands::cp::CpArgs),
+    /// Delete files/directories with confirmation and backup
+    Rm(commands::rm::RmArgs),
+    /// Create empty file(s) or update mtime
+    Touch(commands::touch::TouchArgs),
+    /// Create directory (recursive)
+    Mkdir(commands::mkdir::MkdirArgs),
+    /// Create a file with optional initial content
+    Mkfile(commands::mkfile::MkfileArgs),
+    /// Compute file checksum (sha256/md5/crc32/all)
+    Checksum(commands::checksum::ChecksumArgs),
+    /// Find duplicate files by content hash
+    FindDupes(commands::find_dupes::FindDupesArgs),
+    /// Verify a file against an expected checksum
+    VerifyChecksum(commands::verify_checksum::VerifyChecksumArgs),
 }
 
 fn main() -> Result<()> {
@@ -106,6 +113,15 @@ fn main() -> Result<()> {
         Commands::StripBlankLines(a) => commands::strip_blank_lines::run(a)?,
         Commands::CollapseBlankLines(a) => commands::collapse_blank_lines::run(a)?,
         Commands::PurgeBackups(a) => commands::purge_backups::run(a)?,
+        Commands::Mv(a) => commands::mv::run(a)?,
+        Commands::Cp(a) => commands::cp::run(a)?,
+        Commands::Rm(a) => commands::rm::run(a)?,
+        Commands::Touch(a) => commands::touch::run(a)?,
+        Commands::Mkdir(a) => commands::mkdir::run(a)?,
+        Commands::Mkfile(a) => commands::mkfile::run(a)?,
+        Commands::Checksum(a) => commands::checksum::run(a)?,
+        Commands::FindDupes(a) => commands::find_dupes::run(a)?,
+        Commands::VerifyChecksum(a) => commands::verify_checksum::run(a)?,
     }
     Ok(())
 }
