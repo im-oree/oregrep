@@ -7,3 +7,4 @@ pub mod walker;
 pub mod confirm;
 pub mod git;
 pub mod proc;
+pub mod http;

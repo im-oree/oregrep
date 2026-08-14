@@ -142,6 +142,40 @@ enum Commands {
     ApplyPatch(commands::apply_patch::ApplyPatchArgs),
     /// Revert (reverse-apply) a .patch/.diff file
     RevertPatch(commands::revert_patch::RevertPatchArgs),
+    /// HTTP GET a URL
+    Fetch(commands::fetch::FetchArgs),
+    /// HTTP POST/PUT/PATCH/DELETE with body/form/json
+    Post(commands::post::PostArgs),
+    /// Download URL to file with progress bar
+    Download(commands::download::DownloadArgs),
+    /// Show response headers
+    Headers(commands::headers::HeadersArgs),
+    /// Show HTTP status only
+    Status(commands::status::StatusArgs),
+    /// TCP ping (host:port reachability)
+    Ping(commands::ping::PingArgs),
+    /// DNS resolution
+    Dns(commands::dns::DnsArgs),
+    /// Run API tests from a .ore-api spec file
+    ApiTest(commands::api_test::ApiTestArgs),
+    /// Get remote file size (one or many URLs) without downloading
+    Filesize(commands::filesize::FilesizeArgs),
+    /// Multipart file upload (with fields, headers)
+    Upload(commands::upload::UploadArgs),
+    /// Parallel HTTP GET of many URLs (rate-limit + save)
+    FetchMany(commands::fetch_many::FetchManyArgs),
+    /// Parallel download of many URLs
+    DownloadMany(commands::download_many::DownloadManyArgs),
+    /// Bulk URL health checker (2xx/3xx/4xx/5xx)
+    CheckUrls(commands::check_urls::CheckUrlsArgs),
+    /// Resumable download using HTTP Range
+    ResumeDownload(commands::resume_download::ResumeDownloadArgs),
+    /// Benchmark a URL (N reqs, concurrency, p50/p95/p99)
+    BenchUrl(commands::bench_url::BenchUrlArgs),
+    /// WebSocket client (send/receive/listen)
+    Ws(commands::ws::WsArgs),
+    /// Crawl a URL by following links (bounded depth + count)
+    Crawl(commands::crawl::CrawlArgs),
 }
 
 fn main() -> Result<()> {
@@ -230,6 +264,23 @@ fn main() -> Result<()> {
         Commands::Merge3(a) => commands::merge3::run(a)?,
         Commands::ApplyPatch(a) => commands::apply_patch::run(a)?,
         Commands::RevertPatch(a) => commands::revert_patch::run(a)?,
+        Commands::Fetch(a) => commands::fetch::run(a)?,
+        Commands::Post(a) => commands::post::run(a)?,
+        Commands::Download(a) => commands::download::run(a)?,
+        Commands::Headers(a) => commands::headers::run(a)?,
+        Commands::Status(a) => commands::status::run(a)?,
+        Commands::Ping(a) => commands::ping::run(a)?,
+        Commands::Dns(a) => commands::dns::run(a)?,
+        Commands::ApiTest(a) => commands::api_test::run(a)?,
+        Commands::Filesize(a) => commands::filesize::run(a)?,
+        Commands::Upload(a) => commands::upload::run(a)?,
+        Commands::FetchMany(a) => commands::fetch_many::run(a)?,
+        Commands::DownloadMany(a) => commands::download_many::run(a)?,
+        Commands::CheckUrls(a) => commands::check_urls::run(a)?,
+        Commands::ResumeDownload(a) => commands::resume_download::run(a)?,
+        Commands::BenchUrl(a) => commands::bench_url::run(a)?,
+        Commands::Ws(a) => commands::ws::run(a)?,
+        Commands::Crawl(a) => commands::crawl::run(a)?,
     }
     Ok(())
 }
