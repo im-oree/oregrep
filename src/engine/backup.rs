@@ -51,6 +51,17 @@ pub fn create_backup(file: &Path, label: &str) -> Result<PathBuf> {
     fs::copy(file, &backup_path)
         .with_context(|| format!("Failed to copy {} to {}", file.display(), backup_path.display()))?;
 
+    // Fire-and-forget history record (best-effort)
+    if let Some(ws) = crate::engine::paths::workspace_root(file) {
+        crate::engine::history::record_soft(
+            &ws,
+            "backup",
+            Some(&file.to_string_lossy()),
+            Some(&backup_path.to_string_lossy()),
+            None,
+        );
+    }
+
     Ok(backup_path)
 }
 

@@ -37,8 +37,16 @@ pub fn run(args: SurroundArgs) -> Result<()> {
     };
     let before_text = args.before.replace("\\n", "\n");
     let after_text = args.after.replace("\\n", "\n");
-    let before_lines: Vec<String> = before_text.split('\n').map(|s| s.to_string()).collect();
-    let after_lines: Vec<String> = after_text.split('\n').map(|s| s.to_string()).collect();
+    let before_lines: Vec<String> = if before_text.is_empty() {
+        Vec::new()
+    } else {
+        before_text.split('\n').map(|s| s.to_string()).collect()
+    };
+    let after_lines: Vec<String> = if after_text.is_empty() {
+        Vec::new()
+    } else {
+        after_text.split('\n').map(|s| s.to_string()).collect()
+    };
     let range_str = args.range.clone();
 
     let result = edit_lines(&args.file, &opts, move |lines| {

@@ -15,6 +15,7 @@ pub struct InsertArgs {
     line: usize,
 
     /// Text to insert. Use \n for multiple lines.
+    #[arg(default_value = "")]
     text: String,
 
     #[arg(long)]
@@ -33,12 +34,12 @@ pub fn run(args: InsertArgs) -> Result<()> {
     };
 
     // Handle literal \n in argument -> real newlines
-    let inserted: Vec<String> = args
-        .text
-        .replace("\\n", "\n")
-        .split('\n')
-        .map(|s| s.to_string())
-        .collect();
+    let text = args.text.replace("\\n", "\n");
+    let inserted: Vec<String> = if text.is_empty() {
+        Vec::new()
+    } else {
+        text.split('\n').map(|s| s.to_string()).collect()
+    };
 
     let target_line = args.line;
     let result = edit_lines(&args.file, &opts, move |mut lines| {

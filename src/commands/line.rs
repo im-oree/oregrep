@@ -8,18 +8,18 @@ use crate::engine::encoding::read_file_smart;
 #[derive(Args)]
 pub struct LineArgs {
     /// File to read
-    file: PathBuf,
+    pub file: PathBuf,
 
     /// Line number or range (e.g. "42" or "10:20" or "10-20")
-    range: String,
+    pub range: String,
 
     /// Suppress line numbers
     #[arg(short = 'N', long)]
-    no_number: bool,
+    pub no_number: bool,
 
     /// Include N lines of context before/after
     #[arg(short = 'C', long, default_value = "0")]
-    context: usize,
+    pub context: usize,
 }
 
 pub fn run(args: LineArgs) -> Result<()> {

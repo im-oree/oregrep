@@ -9,9 +9,9 @@ use crate::engine::walker::{collect_files, parse_excludes, parse_extensions, Wal
 
 #[derive(Args)]
 pub struct FindDupesArgs {
-    /// Root path
-    #[arg(default_value = ".")]
-    path: PathBuf,
+    /// Root paths (one or more)
+    #[arg(required = true)]
+    paths: Vec<PathBuf>,
 
     #[arg(short = 'e', long)]
     ext: Option<String>,
@@ -22,33 +22,37 @@ pub struct FindDupesArgs {
     #[arg(long)]
     no_ignore: bool,
 
-    /// Minimum file size in bytes (skip smaller)
     #[arg(short = 's', long, default_value = "1")]
     min_size: u64,
 }
 
 pub fn run(args: FindDupesArgs) -> Result<()> {
-    let cfg = WalkConfig {
-        root: args.path.clone(),
-        extensions: args.ext.as_deref().map(parse_extensions).unwrap_or_default(),
-        excludes: args.exclude.as_deref().map(parse_excludes).unwrap_or_default(),
-        hidden: args.hidden,
-        respect_gitignore: !args.no_ignore,
-        include_binary: true,
-        skip_backups: false,
-    };
-    let files = collect_files(&cfg)?;
-    println!("{} {} files scanned", "Scanned:".cyan(), files.len().to_string().yellow());
+    let mut all_files: Vec<PathBuf> = Vec::new();
+    for p in &args.paths {
+        let cfg = WalkConfig {
+            root: p.clone(),
+            extensions: args.ext.as_deref().map(parse_extensions).unwrap_or_default(),
+            excludes: args.exclude.as_deref().map(parse_excludes).unwrap_or_default(),
+            hidden: args.hidden,
+            respect_gitignore: !args.no_ignore,
+            include_binary: true,
+            skip_backups: false,
+        };
+        all_files.extend(collect_files(&cfg)?);
+    }
+    println!("{} {} files scanned across {} paths",
+        "Scanned:".cyan(),
+        all_files.len().to_string().yellow(),
+        args.paths.len().to_string().yellow()
+    );
 
-    // First pass: group by size
     let mut by_size: HashMap<u64, Vec<PathBuf>> = HashMap::new();
-    for f in &files {
+    for f in &all_files {
         let sz = match std::fs::metadata(f) { Ok(m) => m.len(), Err(_) => continue };
         if sz < args.min_size { continue; }
         by_size.entry(sz).or_default().push(f.clone());
     }
 
-    // For each size group with >1 file, compute hashes
     let mut dupe_groups = 0usize;
     let mut wasted: u64 = 0;
 
@@ -84,9 +88,7 @@ pub fn run(args: FindDupesArgs) -> Result<()> {
     Ok(())
 }
 
-fn short_hash(h: &str) -> String {
-    h.chars().take(12).collect()
-}
+fn short_hash(h: &str) -> String { h.chars().take(12).collect() }
 
 fn format_size(bytes: u64) -> String {
     if bytes < 1024 { format!("{}B", bytes) }

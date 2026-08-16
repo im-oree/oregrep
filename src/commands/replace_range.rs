@@ -13,7 +13,8 @@ pub struct ReplaceRangeArgs {
     /// Range to replace: "42", "10:20", "10-20"
     range: String,
 
-    /// Replacement text. Use \n for multiple lines.
+    /// Replacement text. Use \n for multiple lines. Empty = delete range.
+    #[arg(default_value = "")]
     text: String,
 
     #[arg(long)]
@@ -31,12 +32,18 @@ pub fn run(args: ReplaceRangeArgs) -> Result<()> {
         dry_run: args.dry_run,
     };
     let text = args.text.replace("\\n", "\n");
-    let new_lines: Vec<String> = text.split('\n').map(|s| s.to_string()).collect();
+    let new_lines: Vec<String> = if text.is_empty() {
+        Vec::new()
+    } else {
+        text.split('\n').map(|s| s.to_string()).collect()
+    };
     let range_str = args.range.clone();
+    let is_delete = new_lines.is_empty();
 
     let result = edit_lines(&args.file, &opts, move |lines| {
         let (from, to) = parse_line_range(&range_str, lines.len())?;
-        let mut out: Vec<String> = Vec::with_capacity(lines.len() - (to - from + 1) + new_lines.len());
+        let cap = lines.len().saturating_sub(to - from + 1) + new_lines.len();
+        let mut out: Vec<String> = Vec::with_capacity(cap);
         for (i, l) in lines.into_iter().enumerate() {
             let lineno = i + 1;
             if lineno < from {
@@ -53,7 +60,8 @@ pub fn run(args: ReplaceRangeArgs) -> Result<()> {
         Ok(out)
     })?;
 
-    print_generic("Replaced range", &args.file, &result, args.dry_run);
+    let action = if is_delete { "Deleted range" } else { "Replaced range" };
+    print_generic(action, &args.file, &result, args.dry_run);
     Ok(())
 }
 

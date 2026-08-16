@@ -15,6 +15,7 @@ pub struct AfterArgs {
     pattern: String,
 
     /// Text to insert after matching line(s). Use \n for multi-line.
+    #[arg(default_value = "")]
     text: String,
 
     #[arg(long)]
@@ -41,7 +42,11 @@ pub fn run(args: AfterArgs) -> Result<()> {
     if args.ignore_case { pattern = format!("(?i){}", pattern); }
     let re = Regex::new(&pattern)?;
     let insert_text = args.text.replace("\\n", "\n");
-    let insert_lines: Vec<String> = insert_text.split('\n').map(|s| s.to_string()).collect();
+    let insert_lines: Vec<String> = if insert_text.is_empty() {
+        Vec::new()
+    } else {
+        insert_text.split('\n').map(|s| s.to_string()).collect()
+    };
     let first_only = args.first;
 
     let result = edit_lines(&args.file, &opts, move |lines| {

@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use std::io::{BufRead, BufReader};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -18,23 +19,36 @@ impl RunResult {
     }
 }
 
-/// Execute a command (via cmd.exe on Windows so shell builtins/pipes work).
-/// If `stream`, output is echoed to console live AND captured.
-/// If `silent`, no output is echoed.
+/// Execute a command. The command line is parsed into program + args and
+/// spawned DIRECTLY — no cmd.exe / sh -c layer — so characters like
+/// `$ % & ^ | < > ( ) # ! ' " \ { } [ ]` are passed to the program literally.
+///
+/// The system shell is used only when the command genuinely requires it:
+/// pipes, redirects, command chaining (`&&`, `||`), or cmd builtins (echo,
+/// dir, del, ...) that don't exist as executables.
 pub fn run_cmd(cmd_line: &str, stream: bool, silent: bool) -> Result<RunResult> {
+    run_cmd_in(cmd_line, None, stream, silent)
+}
+
+/// Like `run_cmd`, but runs with `cwd` as the child's working directory.
+pub fn run_cmd_in(cmd_line: &str, cwd: Option<&Path>, stream: bool, silent: bool) -> Result<RunResult> {
     let start = std::time::Instant::now();
+    let trimmed = cmd_line.trim();
 
-    #[cfg(windows)]
-    let (program, args): (&str, Vec<&str>) = ("cmd", vec!["/C", cmd_line]);
-    #[cfg(not(windows))]
-    let (program, args): (&str, Vec<&str>) = ("sh", vec!["-c", cmd_line]);
+    // Decide: direct spawn or shell fallback?
+    let (program, args) = if needs_system_shell(trimmed) {
+        // Has pipes, redirects, or chained commands — must use system shell
+        system_shell_args(trimmed)
+    } else {
+        // Parse into program + args ourselves — no shell involved
+        match parse_command_line(trimmed) {
+            Ok((prog, a)) => (resolve_ore(prog), a),
+            Err(_) => system_shell_args(trimmed),
+        }
+    };
 
-    let mut child = Command::new(program)
-        .args(&args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .with_context(|| format!("Failed to spawn: {}", cmd_line))?;
+    let mut child = spawn_or_fallback(&program, &args, trimmed, cwd)
+        .with_context(|| format!("Failed to spawn: {} {:?}", program, args))?;
 
     let stdout_pipe = child.stdout.take().unwrap();
     let stderr_pipe = child.stderr.take().unwrap();
@@ -85,4 +99,206 @@ pub fn run_cmd(cmd_line: &str, stream: bool, silent: bool) -> Result<RunResult> 
         stderr: err,
         duration_ms: start.elapsed().as_millis(),
     })
+}
+
+/// Resolve a bare `ore` invocation to the currently running executable, so
+/// `sequence "ore cat ..."`, agent tools, aliases and .ore scripts always run
+/// THIS ore binary regardless of PATH.
+fn resolve_ore(program: String) -> String {
+    let lower = program.to_lowercase();
+    if lower == "ore" || lower == "ore.exe" {
+        std::env::current_exe()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or(program)
+    } else {
+        program
+    }
+}
+
+/// Spawn a command directly; on Windows, if the program isn't directly
+/// spawnable (e.g. a .cmd/.bat shim like `npx` that only resolves via
+/// cmd.exe), retry through the system shell with the full original line.
+fn spawn_or_fallback(
+    program: &str,
+    args: &[String],
+    cmd_line: &str,
+    cwd: Option<&Path>,
+) -> std::io::Result<std::process::Child> {
+    let mut builder = Command::new(program);
+    builder
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Some(d) = cwd {
+        builder.current_dir(d);
+    }
+    match builder.spawn() {
+        Ok(c) => Ok(c),
+        Err(e) => {
+            #[cfg(windows)]
+            {
+                if e.kind() == std::io::ErrorKind::NotFound {
+                    // Windows .cmd/.bat shims (npx, yarn, ...) aren't directly
+                    // spawnable — retry via cmd.exe with the original line.
+                    let (sh_prog, sh_args) = system_shell_args(cmd_line);
+                    let mut b = Command::new(sh_prog);
+                    b.args(&sh_args)
+                        .stdout(Stdio::piped())
+                        .stderr(Stdio::piped());
+                    if let Some(d) = cwd {
+                        b.current_dir(d);
+                    }
+                    return b.spawn();
+                }
+            }
+            Err(e)
+        }
+    }
+}
+
+/// Check if a command string contains syntax that REQUIRES a system shell.
+/// Only these patterns force a shell fallback:
+/// - `&&` or `||` (command chaining)
+/// - Unquoted `|` (pipe to another program)
+/// - Unquoted `>` or `<` (redirects)
+/// - cmd builtins (echo, dir, del, ...) that have no .exe
+/// - Batch files (.bat/.cmd)
+fn needs_system_shell(cmd: &str) -> bool {
+    // Quote-aware scan for shell operators
+    let mut in_dq = false;
+    let mut in_sq = false;
+    let bytes = cmd.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        if c == b'"' && !in_sq { in_dq = !in_dq; }
+        if c == b'\'' && !in_dq { in_sq = !in_sq; }
+        if !in_dq && !in_sq {
+            // Check for && and || first
+            if c == b'&' && i + 1 < bytes.len() && bytes[i + 1] == b'&' { return true; }
+            if c == b'|' && i + 1 < bytes.len() && bytes[i + 1] == b'|' { return true; }
+            // Unquoted single | (pipe)
+            if c == b'|' { return true; }
+            // Unquoted > (redirect) and < (input redirect)
+            if c == b'>' { return true; }
+            if c == b'<' { return true; }
+        }
+        i += 1;
+    }
+
+    // Windows built-in commands that only work via cmd.exe
+    #[cfg(windows)]
+    {
+        let first = cmd.split_whitespace().next().unwrap_or("")
+            .trim_start_matches('@')
+            .trim_matches('"')
+            .trim_matches('\'')
+            .to_lowercase();
+        if matches!(first.as_str(),
+            "cd" | "chdir" | "cls" | "copy" | "date" | "del" | "dir" | "echo" | "endlocal" |
+            "erase" | "exit" | "for" | "ftype" | "goto" | "if" | "md" | "mkdir" | "mklink" |
+            "move" | "path" | "pause" | "popd" | "prompt" | "pushd" | "rd" | "rem" | "ren" |
+            "rename" | "rmdir" | "set" | "setlocal" | "setx" | "shift" | "start" | "time" |
+            "title" | "type" | "ver" | "vol" | "assoc" | "where" | "more") {
+            return true;
+        }
+        // Batch files can only be launched through cmd.exe
+        if first.ends_with(".bat") || first.ends_with(".cmd") { return true; }
+    }
+
+    false
+}
+
+/// Build system shell invocation. Uses cmd.exe on Windows, sh on Unix.
+#[cfg(windows)]
+fn system_shell_args(cmd: &str) -> (String, Vec<String>) {
+    ("cmd".to_string(), vec!["/C".to_string(), cmd.to_string()])
+}
+
+#[cfg(not(windows))]
+fn system_shell_args(cmd: &str) -> (String, Vec<String>) {
+    ("sh".to_string(), vec!["-c".to_string(), cmd.to_string()])
+}
+
+/// Parse a command line into (program, args) handling:
+/// - Double-quoted strings (literal content, no shell expansion)
+/// - Single-quoted strings (fully literal)
+/// - Backslash escapes inside double quotes (\", \\, \n, \t, \r)
+/// - Whitespace splitting
+///
+/// Outside quotes, backslashes are KEPT literal (Windows paths like
+/// `C:\Users\...` must survive). Returns Err if quotes are unbalanced.
+fn parse_command_line(input: &str) -> Result<(String, Vec<String>), String> {
+    let tokens = tokenize(input)?;
+    if tokens.is_empty() { return Err("Empty command".to_string()); }
+    let mut iter = tokens.into_iter();
+    let program = iter.next().unwrap();
+    let args: Vec<String> = iter.collect();
+    Ok((program, args))
+}
+
+fn tokenize(input: &str) -> Result<Vec<String>, String> {
+    let mut tokens: Vec<String> = Vec::new();
+    let mut current = String::new();
+    let mut chars = input.chars().peekable();
+    let mut in_double_quote = false;
+    let mut in_single_quote = false;
+
+    while let Some(c) = chars.next() {
+        if in_single_quote {
+            if c == '\'' {
+                in_single_quote = false;
+            } else {
+                current.push(c);
+            }
+            continue;
+        }
+
+        if in_double_quote {
+            if c == '\\' {
+                if let Some(&next) = chars.peek() {
+                    match next {
+                        '"' => { chars.next(); current.push('"'); }
+                        '\\' => { chars.next(); current.push('\\'); }
+                        'n' => { chars.next(); current.push('\n'); }
+                        't' => { chars.next(); current.push('\t'); }
+                        'r' => { chars.next(); current.push('\r'); }
+                        _ => { current.push('\\'); }
+                    }
+                } else {
+                    current.push('\\');
+                }
+            } else if c == '"' {
+                in_double_quote = false;
+            } else {
+                // ALL characters are literal inside double quotes:
+                // $, %, &, ^, |, (, ), <, >, #, !, `, {, }, [, ] — ALL literal
+                current.push(c);
+            }
+            continue;
+        }
+
+        // Outside any quotes
+        match c {
+            '"' => { in_double_quote = true; }
+            '\'' => { in_single_quote = true; }
+            ' ' | '\t' => {
+                if !current.is_empty() {
+                    tokens.push(std::mem::take(&mut current));
+                }
+            }
+            '\\' => {
+                // Windows paths: keep the backslash literal outside quotes
+                current.push('\\');
+            }
+            _ => {
+                current.push(c);
+            }
+        }
+    }
+
+    if in_double_quote { return Err("Unterminated double quote".to_string()); }
+    if in_single_quote { return Err("Unterminated single quote".to_string()); }
+    if !current.is_empty() { tokens.push(current); }
+    Ok(tokens)
 }

@@ -8,23 +8,23 @@ use crate::engine::encoding::{is_binary, read_file_smart};
 #[derive(Args)]
 pub struct CatArgs {
     /// File to print
-    file: PathBuf,
+    pub file: PathBuf,
 
     /// Show line numbers
     #[arg(short = 'n', long)]
-    number: bool,
+    pub number: bool,
 
     /// Force print even if binary
     #[arg(long)]
-    binary: bool,
+    pub binary: bool,
 
     /// Show only lines matching pattern
     #[arg(short = 'g', long)]
-    grep: Option<String>,
+    pub grep: Option<String>,
 
     /// Print raw bytes without decoding (for binary inspection)
     #[arg(long)]
-    raw: bool,
+    pub raw: bool,
 }
 
 pub fn run(args: CatArgs) -> Result<()> {

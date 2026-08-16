@@ -1,1 +1,9 @@
 /target
+.freebuff/
+.ore-index/
+.ore/
+*.bak*
+project_files.txt
+C:*
+C?Users*
+C???Users*

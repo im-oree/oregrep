@@ -30,7 +30,7 @@ pub struct ExtractArgs {
     context: usize,
 
     /// Show line numbers
-    #[arg(short = 'N', long)]
+    #[arg(short = 'n', long = "number", visible_alias = "line-numbers")]
     number: bool,
 
     /// Merge overlapping/adjacent ranges within same file

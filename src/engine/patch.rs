@@ -26,6 +26,47 @@ fn has_bom(bytes: &[u8]) -> bool {
     bytes.starts_with(&[0xEF, 0xBB, 0xBF])
 }
 
+/// Unescape CLI argument escape sequences so that literal \n \r \t
+/// passed from a shell or GUI tokenizer become real control characters.
+/// Handles: \n → LF, \r\n → CRLF (as \r + \n), \r → CR, \t → TAB, \\ → \
+/// Called BEFORE newline normalization so the result can then be
+/// re-normalized to the file's actual line ending style.
+pub fn unescape_arg(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            match chars.peek() {
+                Some('n') => { chars.next(); out.push('\n'); }
+                Some('r') => {
+                    chars.next();
+                    // Check for \r\n sequence
+                    if chars.peek() == Some(&'\\') {
+                        // peek two ahead — consume the \ then check for n
+                        let mut tmp = chars.clone();
+                        tmp.next(); // consume '\'
+                        if tmp.peek() == Some(&'n') {
+                            chars.next(); // consume '\'
+                            chars.next(); // consume 'n'
+                            out.push('\n'); // normalize \r\n → \n (file normalizer handles the rest)
+                        } else {
+                            out.push('\r');
+                        }
+                    } else {
+                        out.push('\r');
+                    }
+                }
+                Some('t') => { chars.next(); out.push('\t'); }
+                Some('\\') => { chars.next(); out.push('\\'); }
+                _ => { out.push('\\'); }
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
 /// Read a file preserving encoding info for later re-write.
 /// Returns (decoded_content, had_bom, newline_style).
 pub fn read_for_patch(file: &Path) -> Result<(String, bool, &'static str)> {
@@ -175,10 +216,20 @@ pub fn parse_patch_file(content: &str) -> Result<Vec<PatchOp>> {
     // Normalize line endings: CRLF -> LF
     let normalized = content.replace("\r\n", "\n");
 
-    let mut ops = Vec::new();
-    // Split on lines that are exactly "==="
-    let blocks: Vec<&str> = normalized.split("\n===\n").collect();
+    // Try explicit === separator first
+    let mut blocks: Vec<String> = normalized
+        .split("\n===\n")
+        .map(|s| s.to_string())
+        .collect();
 
+    // If only one block and no === separator was found, try splitting by
+    // "double blank line + file:" pattern to support the human-friendly
+    // format that omits === between ops.
+    if blocks.len() == 1 && !normalized.contains("\n===\n") {
+        blocks = split_by_file_marker(&normalized);
+    }
+
+    let mut ops = Vec::new();
     for (i, block) in blocks.iter().enumerate() {
         let trimmed = block.trim();
         if trimmed.is_empty() {
@@ -192,43 +243,156 @@ pub fn parse_patch_file(content: &str) -> Result<Vec<PatchOp>> {
     Ok(ops)
 }
 
+/// Split on lines starting with "file:" — treats each as the start of a new op.
+/// Used when the user omits === separators between ops.
+fn split_by_file_marker(content: &str) -> Vec<String> {
+    let lines: Vec<&str> = content.split('\n').collect();
+    let mut blocks: Vec<String> = Vec::new();
+    let mut current: Vec<&str> = Vec::new();
+
+    for line in lines {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with("file:") && !current.is_empty() {
+            // Start of new block — flush current
+            blocks.push(current.join("\n"));
+            current.clear();
+        }
+        current.push(line);
+    }
+    if !current.is_empty() {
+        blocks.push(current.join("\n"));
+    }
+    blocks
+}
+
 fn parse_single_op(block: &str) -> Result<PatchOp> {
-    // Split on lines that are exactly "---"
-    let parts: Vec<&str> = block.split("\n---\n").collect();
-    if parts.len() != 3 {
-        anyhow::bail!(
-            "Patch block must have exactly 3 sections separated by --- (found {} sections)",
-            parts.len()
-        );
+    // Try explicit --- separator first
+    if block.contains("\n---\n") {
+        let parts: Vec<&str> = block.split("\n---\n").collect();
+        if parts.len() == 3 {
+            return parse_three_sections(parts[0], parts[1], parts[2]);
+        }
     }
 
-    // Section 1: file: <path>
-    let file_line = parts[0].trim();
+    // Fallback: parse by "file:", "find:", "replace:" markers on their own lines
+    parse_by_markers(block)
+}
+
+fn parse_three_sections(file_sec: &str, find_sec: &str, replace_sec: &str) -> Result<PatchOp> {
+    let file_line = file_sec.trim();
     let file = file_line
         .strip_prefix("file:")
         .ok_or_else(|| anyhow::anyhow!("First section must start with 'file:', got: {:?}", file_line))?
         .trim()
         .to_string();
 
-    // Section 2: find:\n<content>
-    let find_section = parts[1];
-    let find = find_section
+    let find = find_sec
         .strip_prefix("find:\n")
-        .or_else(|| find_section.strip_prefix("find:"))
+        .or_else(|| find_sec.strip_prefix("find:"))
         .ok_or_else(|| anyhow::anyhow!("Second section must start with 'find:'"))?
         .to_string();
 
-    // Section 3: replace:\n<content>
-    let replace_section = parts[2];
-    let replace = replace_section
+    let replace = replace_sec
         .strip_prefix("replace:\n")
-        .or_else(|| replace_section.strip_prefix("replace:"))
+        .or_else(|| replace_sec.strip_prefix("replace:"))
         .ok_or_else(|| anyhow::anyhow!("Third section must start with 'replace:'"))?
         .to_string();
 
+    Ok(PatchOp { file, find, replace })
+}
+
+/// Parse a block that uses "file:", "find:", "replace:" as line-prefix markers
+/// (no --- separator needed). Everything between find: and replace: is the find
+/// content; everything after replace: is the replace content.
+fn parse_by_markers(block: &str) -> Result<PatchOp> {
+    let lines: Vec<&str> = block.split('\n').collect();
+    let mut file: Option<String> = None;
+    let mut find_start: Option<usize> = None;
+    let mut replace_start: Option<usize> = None;
+
+    for (i, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        // "file: <path>"
+        if let Some(rest) = trimmed.strip_prefix("file:") {
+            if file.is_none() {
+                let val = rest.trim();
+                if val.is_empty() {
+                    anyhow::bail!("'file:' marker has empty value on line {}", i + 1);
+                }
+                file = Some(val.to_string());
+            }
+            continue;
+        }
+        // "find:" or "find:" with trailing whitespace only
+        if trimmed == "find:" {
+            if find_start.is_none() {
+                find_start = Some(i + 1);
+            }
+            continue;
+        }
+        // "replace:" or "replace:" with trailing whitespace only
+        if trimmed == "replace:" {
+            if replace_start.is_none() {
+                replace_start = Some(i + 1);
+            }
+            continue;
+        }
+    }
+
+    let file = file.ok_or_else(||
+        anyhow::anyhow!("Missing 'file:' marker.\n  A patch block must start with:  file: <path>")
+    )?;
+    let find_s = find_start.ok_or_else(||
+        anyhow::anyhow!("Missing 'find:' marker in block for file '{}'.\n  Add a line containing exactly:  find:", file)
+    )?;
+    let replace_s = replace_start.ok_or_else(||
+        anyhow::anyhow!("Missing 'replace:' marker in block for file '{}'.\n  Add a line containing exactly:  replace:", file)
+    )?;
+
+    if replace_s <= find_s {
+        anyhow::bail!("'replace:' must come after 'find:' in block for file '{}'", file);
+    }
+
+    // Find content: lines between find_s and (replace_s - 1)
+    let mut find_lines: Vec<&str> = lines[find_s..replace_s - 1].to_vec();
+    while find_lines.last().map(|s| s.trim().is_empty()).unwrap_or(false) {
+        find_lines.pop();
+    }
+    if find_lines.is_empty() {
+        anyhow::bail!("'find:' section is empty in block for file '{}'", file);
+    }
+
+    // Replace content: everything from replace_s to end
+    let mut replace_lines: Vec<&str> = lines[replace_s..].to_vec();
+    while replace_lines.last().map(|s| s.trim().is_empty()).unwrap_or(false) {
+        replace_lines.pop();
+    }
+
     Ok(PatchOp {
         file,
-        find,
-        replace,
+        find: find_lines.join("\n"),
+        replace: replace_lines.join("\n"),
     })
+}
+
+/// Validate that a .orepatch file is parseable and return a summary.
+/// Used by --validate flag and by external tools (GUI pre-flight).
+pub fn validate_patch_content(content: &str) -> Result<PatchValidation> {
+    let ops = parse_patch_file(content)?;
+    let mut files = std::collections::BTreeSet::new();
+    for op in &ops {
+        files.insert(op.file.clone());
+    }
+    Ok(PatchValidation {
+        op_count: ops.len(),
+        file_count: files.len(),
+        files: files.into_iter().collect(),
+    })
+}
+
+#[derive(Debug)]
+pub struct PatchValidation {
+    pub op_count: usize,
+    pub file_count: usize,
+    pub files: Vec<String>,
 }

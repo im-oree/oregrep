@@ -10,30 +10,30 @@ use crate::engine::encoding::read_file_smart;
 #[derive(Args)]
 pub struct DiffArgs {
     /// First file (or "backup" to diff current file against latest backup)
-    file_a: PathBuf,
+    pub file_a: PathBuf,
 
     /// Second file (omit if using --backup)
-    file_b: Option<PathBuf>,
+    pub file_b: Option<PathBuf>,
 
     /// Diff current file against its latest backup
     #[arg(long)]
-    backup: bool,
+    pub backup: bool,
 
     /// Specific backup label to compare against
     #[arg(long)]
-    label: Option<String>,
+    pub label: Option<String>,
 
     /// Show line numbers
     #[arg(short = 'n', long, default_value = "true")]
-    number: bool,
+    pub number: bool,
 
     /// Number of context lines (default 3)
     #[arg(short = 'C', long, default_value = "3")]
-    context: usize,
+    pub context: usize,
 
     /// Stats only (additions, deletions counts)
     #[arg(short = 's', long)]
-    stats: bool,
+    pub stats: bool,
 }
 
 pub fn run(args: DiffArgs) -> Result<()> {

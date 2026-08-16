@@ -13,7 +13,8 @@ pub struct ReplaceLineArgs {
     /// Line number to replace (1-indexed)
     line: usize,
 
-    /// New content for that line. Use \n for multi-line replacement.
+    /// New content for that line. Use \n for multi-line replacement. Empty = delete line.
+    #[arg(default_value = "")]
     text: String,
 
     #[arg(long)]
@@ -31,8 +32,13 @@ pub fn run(args: ReplaceLineArgs) -> Result<()> {
         dry_run: args.dry_run,
     };
     let text = args.text.replace("\\n", "\n");
-    let new_lines: Vec<String> = text.split('\n').map(|s| s.to_string()).collect();
+    let new_lines: Vec<String> = if text.is_empty() {
+        Vec::new()
+    } else {
+        text.split('\n').map(|s| s.to_string()).collect()
+    };
     let target = args.line;
+    let is_delete = new_lines.is_empty();
 
     let result = edit_lines(&args.file, &opts, move |mut lines| {
         let total = lines.len();
@@ -46,7 +52,8 @@ pub fn run(args: ReplaceLineArgs) -> Result<()> {
         }
         Ok(lines)
     })?;
-    print_generic("Replaced line", &args.file, &result, args.dry_run);
+    let action = if is_delete { "Deleted line" } else { "Replaced line" };
+    print_generic(action, &args.file, &result, args.dry_run);
     Ok(())
 }
 
