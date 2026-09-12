@@ -7,3 +7,7 @@ project_files.txt
 C:*
 C?Users*
 C???Users*
+
+# screenshot generator scratch
+docs/screenshots/.*.html
+node_modules/
